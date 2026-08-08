@@ -39,9 +39,10 @@ class SleepEDFPreprocessor:
         dataset_path = os.path.join(base_path, 'physionet-sleep-data')
         subject_str = f"SC4{subject_id:02d}"
         
-        # Check if files exist, if not raise error instead of downloading
+        # Check if files exist, if not return empty list and warn
         if not glob.glob(os.path.join(dataset_path, f"{subject_str}*")):
-            raise FileNotFoundError(f"Data for subject {subject_id} not found in {dataset_path}. Automatic download is disabled.")
+            print(f"Warning: Data for subject {subject_id} not found in {dataset_path}. Skipping.")
+            return []
             
         try:
             paths = mne.datasets.sleep_physionet.age.fetch_data(

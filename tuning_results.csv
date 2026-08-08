@@ -1,0 +1,2 @@
+LR,Weight_Decay,Gamma,Best_Epoch,Best_Val_Macro_F1,Val_Kappa
+0.0001,0.01,2.0,1,0.06917293233082707,0.0

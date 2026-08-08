@@ -6,64 +6,51 @@ from typing import List
 class SleepSequenceDataset(Dataset):
     def __init__(self, X_list: List[np.ndarray], y_list: List[np.ndarray], 
                  sequence_length: int = 20, stride: int = 20, is_train: bool = True):
-        """
-        Dataset for Sleep Epoch Sequences.
-        
-        Args:
-            X_list (List[np.ndarray]): List of numpy arrays, each of shape (N_i, 3, 3000) for recording i.
-            y_list (List[np.ndarray]): List of numpy arrays, each of shape (N_i,) for recording i.
-            sequence_length (int): Length of the sequence (default 20).
-            stride (int): Stride for extracting sequences. 20 for non-overlapping (train), 1 for overlapping (inference).
-            is_train (bool): Whether to apply N1 augmentation.
-        """
         self.sequence_length = sequence_length
         self.stride = stride
         self.is_train = is_train
         
-        self.sequences_x = []
-        self.sequences_y = []
+        # Convert original data to shared PyTorch tensors in-place to prevent multiprocessing leaks
+        # We explicitly delete the numpy arrays from the original lists to free RAM instantly
+        self.X_list = []
+        self.y_list = []
+        for i in range(len(X_list)):
+            self.X_list.append(torch.tensor(X_list[i], dtype=torch.float32))
+            self.y_list.append(torch.tensor(y_list[i], dtype=torch.long))
+            X_list[i] = None # Free RAM!
+            y_list[i] = None # Free RAM!
         
-        # Build sequences per recording
-        for X, y in zip(X_list, y_list):
+        # Only store the indices of the sequences
+        self.valid_indices = []
+        for rec_idx, y in enumerate(self.y_list):
             num_epochs = len(y)
             if num_epochs < sequence_length:
                 continue
-                
             for start_idx in range(0, num_epochs - sequence_length + 1, stride):
-                end_idx = start_idx + sequence_length
-                seq_x = X[start_idx:end_idx] # (20, 3, 3000)
-                seq_y = y[start_idx:end_idx] # (20,)
-                
-                self.sequences_x.append(seq_x)
-                self.sequences_y.append(seq_y)
+                self.valid_indices.append((rec_idx, start_idx))
                 
     def __len__(self):
-        return len(self.sequences_y)
+        return len(self.valid_indices)
         
     def __getitem__(self, idx):
-        # Shape: (20, 3, 3000)
-        x = np.copy(self.sequences_x[idx])
-        y = self.sequences_y[idx]
+        rec_idx, start_idx = self.valid_indices[idx]
+        end_idx = start_idx + self.sequence_length
+        
+        # Dynamically slice the sequence (clone so we don't mutate shared memory during aug)
+        x = self.X_list[rec_idx][start_idx:end_idx].clone()
+        y = self.y_list[rec_idx][start_idx:end_idx]
         
         # Apply N1 augmentation if training
         if self.is_train:
-            # 1 corresponds to N1 sleep stage
-            n1_indices = np.where(y == 1)[0]
+            n1_indices = torch.where(y == 1)[0]
             for i in n1_indices:
-                # Additive Gaussian noise strictly on N1
-                # Standard Deviation = 5% of the epoch's RMS amplitude
-                epoch_data = x[i] # (3, 3000)
-                # RMS over channels and time
-                rms = np.sqrt(np.mean(epoch_data**2))
-                noise_std = 0.05 * rms
-                noise = np.random.normal(0, noise_std, size=epoch_data.shape)
-                x[i] = epoch_data + noise
+                epoch_data = x[i]
+                # Amplitude Scaling (±10%)
+                # This preserves real brainwave structures while acting as augmentation
+                scale_factor = torch.empty(1).uniform_(0.9, 1.1).item()
+                x[i] = epoch_data * scale_factor
                 
-        # Convert to tensors
-        x_tensor = torch.tensor(x, dtype=torch.float32)
-        y_tensor = torch.tensor(y, dtype=torch.long)
-        
-        return x_tensor, y_tensor
+        return x, y
 
 def compute_class_weights(y_list: List[np.ndarray], num_classes: int = 5) -> torch.Tensor:
     """

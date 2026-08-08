@@ -35,7 +35,7 @@ def main():
         raise ValueError("No test data loaded. Check cache directory or dataset.")
         
     # Setup test dataset and loader with stride=1 for inference
-    test_dataset = SleepSequenceDataset(X_test, y_test, sequence_length=20, stride=1, is_train=False)
+    test_dataset = SleepSequenceDataset(X_test, y_test, sequence_length=30, stride=1, is_train=False)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     
     print("Loading model...")

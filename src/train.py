@@ -71,25 +71,36 @@ def load_real_data(subject_ids, cache_dir="./data_cache"):
             
     return X_list, y_list
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device):
+def train_one_epoch(model, dataloader, criterion, optimizer, device, scaler=None):
     model.train()
     total_loss = 0.0
     
     for x, y in tqdm(dataloader, desc="Training", leave=False):
-        x, y = x.to(device), y.to(device)
+        x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
         
-        logits = model(x) # (B, 20, 5)
-        
-        # CrossEntropyLoss expects (B, C, d1, d2, ...) or flattened
-        # Reshape to (B * 20, 5) and y to (B * 20)
-        logits_flat = logits.view(-1, 5)
-        y_flat = y.view(-1)
-        
-        loss = criterion(logits_flat, y_flat)
-        loss.backward()
-        optimizer.step()
+        if scaler is not None:
+            with torch.autocast(device_type=device.type, dtype=torch.float16):
+                logits = model(x) # (B, 20, 5)
+                logits_flat = logits.view(-1, 5)
+                y_flat = y.view(-1)
+                loss = criterion(logits_flat, y_flat)
+                
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            logits = model(x) # (B, 20, 5)
+            
+            # CrossEntropyLoss expects (B, C, d1, d2, ...) or flattened
+            # Reshape to (B * 20, 5) and y to (B * 20)
+            logits_flat = logits.view(-1, 5)
+            y_flat = y.view(-1)
+            
+            loss = criterion(logits_flat, y_flat)
+            loss.backward()
+            optimizer.step()
         
         total_loss += loss.item()
         
@@ -103,14 +114,20 @@ def evaluate(model, dataloader, criterion, device):
     
     with torch.no_grad():
         for x, y in tqdm(dataloader, desc="Evaluating", leave=False):
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             
-            logits = model(x)
-            
-            logits_flat = logits.view(-1, 5)
-            y_flat = y.view(-1)
-            
-            loss = criterion(logits_flat, y_flat)
+            if device.type == 'cuda':
+                with torch.autocast(device_type=device.type, dtype=torch.float16):
+                    logits = model(x)
+                    logits_flat = logits.view(-1, 5)
+                    y_flat = y.view(-1)
+                    loss = criterion(logits_flat, y_flat)
+            else:
+                logits = model(x)
+                logits_flat = logits.view(-1, 5)
+                y_flat = y.view(-1)
+                loss = criterion(logits_flat, y_flat)
+                
             total_loss += loss.item()
             
             preds = torch.argmax(logits_flat, dim=1)
@@ -132,6 +149,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=100, help="Number of training epochs")
     parser.add_argument('--batch_size', type=int, default=32, help="Batch size")
     parser.add_argument('--lr', type=float, default=1e-4, help="Learning rate")
+    parser.add_argument('--num_workers', type=int, default=0, help="Number of dataloader workers")
     parser.add_argument('--test-mode', action='store_true', help="Run a quick test with dummy data")
     parser.add_argument('--limit-subjects', type=int, default=None, help="Limit number of subjects loaded (for fast testing)")
     parser.add_argument('--cache-dir', type=str, default="./data_cache", help="Directory to cache preprocessed subject data")
@@ -141,6 +159,10 @@ def main():
         device = torch.device('mps')
     elif torch.cuda.is_available():
         device = torch.device('cuda')
+        # Enable TF32 for Ampere (RTX 30 series) and newer
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.backends.cudnn.benchmark = True
     else:
         device = torch.device('cpu')
     print(f"Using device: {device}")
@@ -182,17 +204,19 @@ def main():
         print(f"Computed Class Weights: {class_weights.numpy()}")
 
     # Setup datasets & loaders
-    train_dataset = SleepSequenceDataset(X_train, y_train, sequence_length=20, stride=20, is_train=True)
-    val_dataset = SleepSequenceDataset(X_val, y_val, sequence_length=20, stride=1, is_train=False)
+    train_dataset = SleepSequenceDataset(X_train, y_train, sequence_length=30, stride=30, is_train=True)
+    val_dataset = SleepSequenceDataset(X_val, y_val, sequence_length=30, stride=1, is_train=False)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=args.num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, pin_memory=True, num_workers=args.num_workers)
     
     model = NeuroSleepModel().to(device)
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-2)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     criterion = FocalLoss(weight=class_weights.to(device), gamma=2.0)
+    
+    scaler = torch.amp.GradScaler('cuda') if device.type == 'cuda' else None
     
     best_f1 = 0.0
     
@@ -203,7 +227,7 @@ def main():
     
     for epoch in range(1, args.epochs + 1):
         print(f"\nEpoch {epoch}/{args.epochs}")
-        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device, scaler)
         val_loss, macro_f1, kappa, acc, targets, preds = evaluate(model, val_loader, criterion, device)
         scheduler.step()
         
