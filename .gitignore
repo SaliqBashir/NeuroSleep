@@ -2,9 +2,12 @@
 *.o
 *.out
 *.exe
+__pycache__/
+*.pyc
 
 # Ignore editor/IDE files
-*.vscode
+*.vscode/
+.idea/
 *.log
 *.swp
 *.swo
@@ -13,3 +16,20 @@
 # Ignore system files
 .DS_Store
 Thumbs.db
+
+# Python virtual environment
+venv/
+
+# Ignore pytest caches
+.pytest_cache/
+
+# Ignore data caches and downloaded datasets
+data_cache/
+
+# Ignore saved PyTorch models
+*.pth
+*.pt
+
+# Ignore generated training reports and logs
+training_history.csv
+classification_report.txt
