@@ -21,54 +21,84 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        ce_loss = F.cross_entropy(inputs, targets, weight=self.weight, reduction='none')
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
         pt = torch.exp(-ce_loss)
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
         
+        if self.weight is not None:
+            focal_loss = focal_loss * self.weight[targets]
+            
         if self.reduction == 'mean':
             return focal_loss.mean()
         elif self.reduction == 'sum':
             return focal_loss.sum()
         return focal_loss
 
+def _process_subject_night(sid, n, psg_path, hyp_path, cache_dir):
+    from preprocess import SleepEDFPreprocessor
+    import os
+    import numpy as np
+    preprocessor = SleepEDFPreprocessor()
+    X, y = preprocessor.preprocess_recording(psg_path, hyp_path)
+    x_path = os.path.join(cache_dir, f"subject_{sid}_night_{n}_X.npy")
+    y_path = os.path.join(cache_dir, f"subject_{sid}_night_{n}_y.npy")
+    np.save(x_path, X)
+    np.save(y_path, y)
+
 def load_real_data(subject_ids, cache_dir="./data_cache"):
     os.makedirs(cache_dir, exist_ok=True)
+    from preprocess import SleepEDFPreprocessor
     preprocessor = SleepEDFPreprocessor()
     X_list = []
     y_list = []
     
+    import multiprocessing as mp
+    
     for sid in tqdm(subject_ids, desc="Loading/Preprocessing subjects"):
-        cache_path = os.path.join(cache_dir, f"subject_{sid}.npz")
-        if os.path.exists(cache_path):
-            data = np.load(cache_path)
-            num_nights = data['num_nights']
-            for n in range(num_nights):
-                X_list.append(data[f'X_{n}'])
-                y_list.append(data[f'y_{n}'])
-        else:
+        night_idx = 0
+        while True:
+            x_path = os.path.join(cache_dir, f"subject_{sid}_night_{night_idx}_X.npy")
+            y_path = os.path.join(cache_dir, f"subject_{sid}_night_{night_idx}_y.npy")
+            if os.path.exists(x_path) and os.path.exists(y_path):
+                # Load with mmap to use ZERO RAM!
+                X_list.append(np.load(x_path, mmap_mode='r'))
+                y_list.append(np.load(y_path, mmap_mode='r'))
+                night_idx += 1
+            else:
+                break
+                
+        if night_idx == 0:
+            # Clean up old .npz if they exist to force rebuild
+            old_npz = os.path.join(cache_dir, f"subject_{sid}.npz")
+            if os.path.exists(old_npz):
+                os.remove(old_npz)
+                
             # Fetch files and preprocess
             paths = preprocessor.fetch_subject(sid)
             if not paths:
                 continue
             
-            subject_data = {}
-            subject_data['num_nights'] = len(paths)
-            
-            local_X = []
-            local_y = []
             for n, (psg_path, hyp_path) in enumerate(paths):
-                X, y = preprocessor.preprocess_recording(psg_path, hyp_path)
-                local_X.append(X)
-                local_y.append(y)
+                try:
+                    p = mp.Process(target=_process_subject_night, args=(sid, n, psg_path, hyp_path, cache_dir))
+                    p.start()
+                    p.join()
+                    
+                    if p.exitcode != 0:
+                        raise RuntimeError(f"Preprocessing subprocess failed with exit code {p.exitcode}")
+                    
+                    x_path = os.path.join(cache_dir, f"subject_{sid}_night_{n}_X.npy")
+                    y_path = os.path.join(cache_dir, f"subject_{sid}_night_{n}_y.npy")
+                    
+                    # Immediately load them back mapped
+                    X_list.append(np.load(x_path, mmap_mode='r'))
+                    y_list.append(np.load(y_path, mmap_mode='r'))
+                except Exception as e:
+                    print(f"\nCRASHED ON SUBJECT {sid} NIGHT {n} WITH ERROR:")
+                    import traceback
+                    traceback.print_exc()
+                    raise
                 
-                subject_data[f'X_{n}'] = X
-                subject_data[f'y_{n}'] = y
-                
-            np.savez(cache_path, **subject_data)
-            
-            X_list.extend(local_X)
-            y_list.extend(local_y)
-            
     return X_list, y_list
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, scaler=None):

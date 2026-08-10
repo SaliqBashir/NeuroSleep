@@ -6,7 +6,7 @@ __pycache__/
 *.pyc
 
 # Ignore editor/IDE files
-*.vscode/
+.vscode/
 .idea/
 *.log
 *.swp
@@ -19,6 +19,7 @@ Thumbs.db
 
 # Python virtual environment
 venv/
+.env
 
 # Ignore pytest caches
 .pytest_cache/
@@ -26,9 +27,14 @@ venv/
 # Ignore data caches and downloaded datasets
 data_cache/
 
+# Ignore temporary uploads for inference
+temp_uploads/
+
 # Ignore saved PyTorch models
 *.pth
 *.pt
+# EXCEPT the best model which is needed for inference!
+!best_model.pth
 
 # Ignore generated training reports and logs
 training_history.csv

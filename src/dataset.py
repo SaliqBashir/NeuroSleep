@@ -15,8 +15,8 @@ class SleepSequenceDataset(Dataset):
         self.X_list = []
         self.y_list = []
         for i in range(len(X_list)):
-            self.X_list.append(torch.tensor(X_list[i], dtype=torch.float32))
-            self.y_list.append(torch.tensor(y_list[i], dtype=torch.long))
+            self.X_list.append(torch.as_tensor(X_list[i], dtype=torch.float32))
+            self.y_list.append(torch.as_tensor(y_list[i], dtype=torch.long))
             X_list[i] = None # Free RAM!
             y_list[i] = None # Free RAM!
         
