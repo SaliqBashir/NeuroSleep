@@ -49,11 +49,7 @@ const FileUpload = ({ onUpload }) => {
       
       {!selectedFile ? (
         <>
-          <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ background: 'var(--text-primary)', padding: '1rem 2rem', color: 'var(--accent-cyan)', fontSize: '1.5rem', fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.1em' }}>
-              FILE_INPUT.EDF
-            </div>
-          </div>
+
           <h3 style={{ fontSize: '2rem', marginBottom: '0.5rem', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', textTransform: 'uppercase' }}>INITIALIZE UPLOAD</h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem', maxWidth: '400px', margin: '0 auto 2.5rem', fontFamily: 'var(--font-mono)' }}>Drop raw PSG recording or click below to browse system files.</p>
           
