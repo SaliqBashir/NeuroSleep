@@ -10,7 +10,7 @@ app = FastAPI(title="NeuroSleep API")
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For dev, allow all
+    allow_origins=["*"],  # For dev, allow all
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,22 +19,24 @@ app.add_middleware(
 UPLOAD_DIR = "temp_uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     if not file.filename.endswith(".edf"):
-        raise HTTPException(status_code=400, detail="Only .edf files are supported")
-        
+        raise HTTPException(
+            status_code=400, detail="Only .edf files are supported")
+
     # Save the file temporarily
     file_id = str(uuid.uuid4())
     file_path = os.path.join(UPLOAD_DIR, f"{file_id}.edf")
-    
+
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            
+
         # Run inference
         stages = predict_sleep_stages(file_path)
-        
+
         # Calculate summary statistics
         total_epochs = len(stages)
         summary = {
@@ -46,14 +48,14 @@ async def predict(file: UploadFile = File(...)):
             "total_epochs": total_epochs,
             "total_minutes": total_epochs * 30 / 60
         }
-        
+
         return {
             "status": "success",
             "filename": file.filename,
             "stages": stages,
             "summary": summary
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
