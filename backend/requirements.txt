@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+python-multipart
+mne
+torch
+numpy
+scikit-learn

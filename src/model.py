@@ -83,14 +83,21 @@ class SequenceLSTM(nn.Module):
         )
         
         # 512 * 2 (bidirectional) = 1024
+        self.attention = nn.MultiheadAttention(embed_dim=hidden_dim * 2, num_heads=8, batch_first=True)
         self.classifier = nn.Linear(hidden_dim * 2, num_classes)
         
     def forward(self, x):
         # x shape: (B, SeqLen, 256)
         lstm_out, _ = self.lstm(x) # (B, SeqLen, 1024)
         
+        # Self-Attention (query, key, value)
+        attn_out, _ = self.attention(lstm_out, lstm_out, lstm_out)
+        
+        # Residual connection
+        out = lstm_out + attn_out
+        
         # Project to logits
-        logits = self.classifier(lstm_out) # (B, SeqLen, 5)
+        logits = self.classifier(out) # (B, SeqLen, 5)
         return logits
 
 
