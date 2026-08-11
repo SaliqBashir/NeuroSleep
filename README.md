@@ -81,8 +81,7 @@ To use the web interface for sleep analysis, you must start both the backend and
 
 **Start the Backend:**
 ```bash
-cd backend
-uvicorn main:app --reload --port 8000
+uvicorn backend.main:app --reload --port 8000
 ```
 
 **Start the Frontend:**
