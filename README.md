@@ -105,6 +105,6 @@ python src/evaluate.py
 
 ## Evaluation Target Metrics
 The system is evaluated against human inter-scorer reliability benchmarks:
-*   **Macro-average F1 Score:** Target 0.77 - 0.80
+*   **Macro-average F1 Score:** Target 0.77 - 0.82
 *   **Cohen's Kappa:** Target 0.73 - 0.78
 *   **Per-class F1 Score:** Strict auditing of minority N1 and majority N3 performance.
