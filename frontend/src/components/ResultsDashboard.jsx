@@ -76,8 +76,8 @@ const ResultsDashboard = ({ data }) => {
             <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)', margin: 0, fontFamily: 'var(--font-sans)' }}>DATA_SUMMARY</h3>
             <span style={{ color: 'var(--accent-red)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>INSIGHTS EXTRACTED</span>
           </div>
-          <button onClick={() => window.print()} style={{ background: 'var(--text-primary)', border: 'none', color: 'var(--accent-cyan)', padding: '0.75rem 1.25rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxShadow: 'var(--shadow-brutal)', transition: 'var(--transition-fast)' }} onMouseOver={(e) => { e.target.style.boxShadow = 'none'; e.target.style.transform = 'translate(4px, 4px)'; }} onMouseOut={(e) => { e.target.style.boxShadow = 'var(--shadow-brutal)'; e.target.style.transform = 'translate(0, 0)'; }}>
-            [ PRINT_PDF ]
+          <button className="no-print" onClick={() => window.print()} style={{ background: 'var(--text-primary)', border: 'none', color: 'var(--accent-cyan)', padding: '0.75rem 1.25rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', boxShadow: 'var(--shadow-brutal)', transition: 'var(--transition-fast)' }} onMouseOver={(e) => { e.target.style.boxShadow = 'none'; e.target.style.transform = 'translate(4px, 4px)'; }} onMouseOut={(e) => { e.target.style.boxShadow = 'var(--shadow-brutal)'; e.target.style.transform = 'translate(0, 0)'; }}>
+            [ PRINT ]
           </button>
         </div>
         
@@ -120,21 +120,21 @@ const ResultsDashboard = ({ data }) => {
       </div>
 
       {/* Hypnogram Chart */}
-      <div className="glass-panel" style={{ padding: '2.5rem', height: '500px', position: 'relative' }}>
+      <div className="glass-panel no-print" style={{ padding: '2.5rem', height: '500px', position: 'relative' }}>
         <div style={{ position: 'absolute', top: '-14px', left: '24px', background: 'var(--accent-red)', color: 'var(--text-light)', padding: '4px 12px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>
           HYPNOGRAM_RENDER
         </div>
         
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="2 2" stroke="var(--border-color)" vertical={false} opacity={0.2} />
-            <XAxis 
-              dataKey="time" 
-              stroke="var(--text-primary)" 
-              tick={{ fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)' }}
-              minTickGap={50}
-              tickLine={false}
-              axisLine={{ strokeWidth: 2 }}
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="2 2" stroke="var(--border-color)" vertical={false} opacity={0.2} />
+              <XAxis 
+                dataKey="time" 
+                stroke="var(--text-primary)" 
+                tick={{ fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                minTickGap={50}
+                tickLine={false}
+                axisLine={{ strokeWidth: 2 }}
               dy={15}
             />
             <YAxis 

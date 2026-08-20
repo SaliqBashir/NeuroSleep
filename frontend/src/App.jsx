@@ -44,7 +44,7 @@ function App() {
       
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
         
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 'var(--border-thick)', paddingBottom: '1.5rem', marginBottom: '3rem' }}>
+        <header className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 'var(--border-thick)', paddingBottom: '1.5rem', marginBottom: '3rem' }}>
           <div>
             <h1 className="heading-gradient" style={{ fontSize: '2.5rem', margin: 0, letterSpacing: '-0.05em' }}>
               NEUROSLEEP
@@ -62,8 +62,12 @@ function App() {
         </header>
 
         <main style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ marginBottom: '2rem', fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-            <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>01</span> WORKSPACE
+          <div className="no-print" style={{ marginBottom: '2rem', fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+            {results ? (
+              <><span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>02</span> OUTPUT</>
+            ) : (
+              <><span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>01</span> INPUT</>
+            )}
           </div>
 
           {error && (
@@ -89,10 +93,10 @@ function App() {
           {results && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-primary)', background: 'var(--accent-cyan)', padding: '0.5rem 1rem', border: 'var(--border-thick)', boxShadow: '4px 4px 0 #000' }}>
+                <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-primary)', background: 'var(--accent-cyan)', padding: '0.5rem 1rem', border: 'var(--border-thick)' }}>
                   TARGET_ <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{results.filename}</span>
                 </h2>
-                <button onClick={resetApp} style={{ background: 'var(--bg-primary)', border: 'var(--border-thick)', color: 'var(--text-primary)', padding: '0.75rem 1.5rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.9rem', boxShadow: 'var(--shadow-brutal)', transition: 'var(--transition-fast)' }} onMouseOver={(e) => { e.target.style.background = 'var(--text-primary)'; e.target.style.color = 'var(--text-light)'; }} onMouseOut={(e) => { e.target.style.background = 'var(--bg-primary)'; e.target.style.color = 'var(--text-primary)'; }}>
+                <button className="no-print" onClick={resetApp} style={{ background: 'var(--bg-primary)', border: 'var(--border-thick)', color: 'var(--text-primary)', padding: '0.75rem 1.5rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.9rem', boxShadow: 'var(--shadow-brutal)', transition: 'var(--transition-fast)' }} onMouseOver={(e) => { e.target.style.boxShadow = 'none'; e.target.style.transform = 'translate(4px, 4px)'; }} onMouseOut={(e) => { e.target.style.boxShadow = 'var(--shadow-brutal)'; e.target.style.transform = 'translate(0, 0)'; }}>
                   [ NEW_ANALYSIS ]
                 </button>
               </div>
